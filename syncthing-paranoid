@@ -1,0 +1,4 @@
+#!/bin/bash
+set -eux
+
+! ( find "$@" -iregex '.*sync-conflict.*' | grep . )
