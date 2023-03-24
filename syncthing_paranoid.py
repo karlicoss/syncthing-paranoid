@@ -31,14 +31,15 @@ class Error:
 def check(syncthing: Path) -> Iterator[Error]:
     print("checking", syncthing)
 
-    ## check sync conflicts
-    res = check_output(['fdfind', '--hidden', '.*sync-conflict.*', syncthing]).decode('utf8').strip()
-    if len(res) > 0:
-        yield Error(path=syncthing, info='syncthing conflicts ' + res)
-    ##
-
     for r, dirs, files in os.walk(syncthing):
         xx = dirs + files
+
+        ## check sync conflicts
+        for x in xx:
+            if 'sync-conflict' in x:
+                yield Error(path=Path(r) / x, info='syncthing conflict')
+        ##
+
         ## check potential case conflicts (macos stumbles over these)
         cnt = Counter([f.lower() for f in xx])
         for k, v in cnt.items():
