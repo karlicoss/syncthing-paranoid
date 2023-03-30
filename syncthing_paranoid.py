@@ -14,6 +14,8 @@ from syncthing_paranoid_config import IGNORED
 
 
 # make android friendly https://stackoverflow.com/a/48182875/706389
+# TODO hmm it actually might be fine these days?
+# since android is using f2fs now? https://en.wikipedia.org/wiki/Comparison_of_file_systems#Limits
 ANDROID = r'''|\?*<\":>+\[\]/'"'''
 MISC = ''.join([
     '·', # not sure what's a better way to deal with it?
