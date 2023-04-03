@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Iterator
 import os
 import re
+import shutil
 import sys
 
 
@@ -59,7 +60,8 @@ def check(syncthing: Path) -> Iterator[Error]:
 def run(roots: list[Path]) -> None:
     errors = []
     for root in roots:
-        res = check_output(['fdfind', '--hidden', '.stfolder', root, '--type', 'd', '-0'])
+        fd_bin = shutil.which('fdfind') or shutil.which('fd')
+        res = check_output([fd_bin, '--hidden', '.stfolder', root, '--type', 'd', '-0'])
         split = res.decode('utf8').split('\0')
         assert split[-1] == '', split
         del split[-1]
