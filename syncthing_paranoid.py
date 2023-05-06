@@ -4,7 +4,7 @@ from collections import Counter
 from dataclasses import dataclass
 from subprocess import check_output
 from pathlib import Path
-from typing import Iterator
+from typing import Iterator, Any
 import os
 import re
 import shutil
@@ -17,6 +17,7 @@ from syncthing_paranoid_config import IGNORED
 # make android friendly https://stackoverflow.com/a/48182875/706389
 # TODO hmm it actually might be fine these days?
 # since android is using f2fs now? https://en.wikipedia.org/wiki/Comparison_of_file_systems#Limits
+# 20230506 hmm, ok so "?" is definitely not working -- tried creating a file on PC, didn't sync on either pixel of samsung device
 ANDROID = r'''|\?*<\":>+\[\]/'"'''
 MISC = ''.join([
     '·', # not sure what's a better way to deal with it?
@@ -29,6 +30,7 @@ FORBIDDEN = ANDROID + MISC
 class Error:
     path: Path
     info: str
+    extra: Any = None
 
 
 def check(syncthing: Path) -> Iterator[Error]:
@@ -53,7 +55,8 @@ def check(syncthing: Path) -> Iterator[Error]:
         ## check filenames potentially unfriendly to Android
         for x in xx:
             if re.search(f'[{FORBIDDEN}]', x):
-                yield Error(path=Path(r) / x, info='file name contains special characters, might be bad for Windows/Android')
+                contained = {c for c in FORBIDDEN if c in x}
+                yield Error(path=Path(r) / x, info='file name contains special characters, might be bad for Windows/Android', extra=contained)
         ##
 
 
