@@ -2,13 +2,15 @@
 import argparse
 from collections import Counter
 from dataclasses import dataclass
-from subprocess import check_output
+import subprocess
+from subprocess import check_output, PIPE
 from pathlib import Path
 from typing import Iterator, Any
 import os
 import re
 import shutil
 import sys
+import time
 
 
 from syncthing_paranoid_config import IGNORED
@@ -60,11 +62,29 @@ def check(syncthing: Path) -> Iterator[Error]:
         ##
 
 
+def fdfind(*args: str | Path) -> bytes:
+    fd_bin = shutil.which('fdfind') or shutil.which('fd')
+    assert fd_bin is not None
+    for attempt in range(5):
+        # ugh, fdfind on ubuntu 22.04 sometimes randomly results in panic??
+        # "This is a known bug in the Rust standard library. See https://github.com/rust-lang/rust/issues/39364', /build/rustc-60tkWq/rustc-1.59.0+dfsg1/library/std/src/sync/mpsc/shared.rs:251:13"
+        res = subprocess.run([fd_bin, *args], stdout=PIPE)
+        if res.returncode == 0:
+            out = res.stdout
+            assert out is not None
+            return out
+        if res.returncode == 101:  # typical code for rust panic
+            time.sleep(10)  # not sure if necessary but just in case
+            continue
+        res.check_returncode()
+    else:
+        raise RuntimeError("Shouldn't happen!")  # hopefully 5 attemtps is enough
+
+
 def run(roots: list[Path]) -> None:
     errors = []
     for root in roots:
-        fd_bin = shutil.which('fdfind') or shutil.which('fd')
-        res = check_output([fd_bin, '--hidden', '.stfolder', root, '--type', 'd', '-0'])
+        res = fdfind('--hidden', '.stfolder', root, '--type', 'd', '-0')
         split = res.decode('utf8').split('\0')
         assert split[-1] == '', split
         del split[-1]
