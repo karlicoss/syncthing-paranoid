@@ -20,6 +20,7 @@ from syncthing_paranoid_config import IGNORED
 # TODO hmm it actually might be fine these days?
 # since android is using f2fs now? https://en.wikipedia.org/wiki/Comparison_of_file_systems#Limits
 # 20230506 hmm, ok so "?" is definitely not working -- tried creating a file on PC, didn't sync on either pixel of samsung device
+# : definitely not working for inbound sync on android -- errors durung tmp file creation or something like that
 ANDROID = r'''|\?*<\":>+\[\]/'"'''
 MISC = ''.join([
     '·', # not sure what's a better way to deal with it?
