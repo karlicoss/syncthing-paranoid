@@ -1,22 +1,21 @@
 #!/usr/bin/env python3
+from __future__ import annotations
+
 import argparse
-from collections import Counter
-from dataclasses import dataclass
-import subprocess
-from subprocess import check_output, PIPE
-from pathlib import Path
-from typing import Iterator, Any
 import os
 import re
 import shutil
+import subprocess
 import sys
-import time
-
+from collections import Counter
+from collections.abc import Iterator
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any
 
 from syncthing_paranoid_config import IGNORED
 
-
-# make android friendly https://stackoverflow.com/a/48182875/706389
+# make android friendly (see https://stackoverflow.com/questions/2679699/what-characters-allowed-in-file-names-on-android/48182875#48182875)
 # TODO hmm it actually might be fine these days?
 # since android is using f2fs now? https://en.wikipedia.org/wiki/Comparison_of_file_systems#Limits
 # 20230506 hmm, ok so "?" is definitely not working -- tried creating a file on PC, didn't sync on either pixel of samsung device
@@ -64,22 +63,9 @@ def check(syncthing: Path) -> Iterator[Error]:
 
 
 def fdfind(*args: str | Path) -> bytes:
-    fd_bin = shutil.which('fdfind') or shutil.which('fd')
+    fd_bin = shutil.which('fdfind') or shutil.which('fd')  # sometimes has different name, e.g. on linux vs osx
     assert fd_bin is not None
-    for attempt in range(5):
-        # ugh, fdfind on ubuntu 22.04 sometimes randomly results in panic??
-        # "This is a known bug in the Rust standard library. See https://github.com/rust-lang/rust/issues/39364', /build/rustc-60tkWq/rustc-1.59.0+dfsg1/library/std/src/sync/mpsc/shared.rs:251:13"
-        res = subprocess.run([fd_bin, *args], stdout=PIPE)
-        if res.returncode == 0:
-            out = res.stdout
-            assert out is not None
-            return out
-        if res.returncode == 101:  # typical code for rust panic
-            time.sleep(10)  # not sure if necessary but just in case
-            continue
-        res.check_returncode()
-    else:
-        raise RuntimeError("Shouldn't happen!")  # hopefully 5 attemtps is enough
+    return subprocess.check_output([fd_bin, *args])
 
 
 def run(roots: list[Path]) -> None:
