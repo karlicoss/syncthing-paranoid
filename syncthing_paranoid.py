@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import os
 import re
 import shutil
@@ -37,6 +38,17 @@ class Error:
 
 def check(syncthing: Path) -> Iterator[Error]:
     print("checking", syncthing)
+
+
+    ## Find files with the wrong owner (e.g. if owned by root by accident sometimes it can't be synced/deleted remotely)
+    found = fdfind('.', syncthing, '--no-ignore', '--hidden', '--owner', f'!{getpass.getuser()}', '-0')
+    if found != b'':
+        split = found.decode('utf8').split('\0')
+        assert split[-1] == '', split
+        del split[-1]
+        for p in split:
+            yield Error(path=Path(p), info='wrong owner')
+    ##
 
     for r, dirs, files in os.walk(syncthing):
         xx = dirs + files
