@@ -9,7 +9,7 @@ import shutil
 import subprocess
 import sys
 from collections import Counter
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -22,10 +22,12 @@ from syncthing_paranoid_config import IGNORED
 # 20230506 hmm, ok so "?" is definitely not working -- tried creating a file on PC, didn't sync on either pixel of samsung device
 # : definitely not working for inbound sync on android -- errors durung tmp file creation or something like that
 ANDROID = r'''|\?*<\":>+\[\]/'"'''
-MISC = ''.join([
-    '·', # not sure what's a better way to deal with it?
-    '^', # not allowed in windows
-])
+MISC = ''.join(  # noqa: FLY002
+    [
+        '·',  # not sure what's a better way to deal with it?
+        '^',  # not allowed in windows
+    ]
+)
 FORBIDDEN = ANDROID + MISC
 
 
@@ -38,7 +40,6 @@ class Error:
 
 def check(syncthing: Path) -> Iterator[Error]:
     print("checking", syncthing)
-
 
     ## Find files with the wrong owner (e.g. if owned by root by accident sometimes it can't be synced/deleted remotely)
     found = fdfind('.', syncthing, '--no-ignore', '--hidden', '--owner', f'!{getpass.getuser()}', '-0')
@@ -70,7 +71,11 @@ def check(syncthing: Path) -> Iterator[Error]:
         for x in xx:
             if re.search(f'[{FORBIDDEN}]', x):
                 contained = {c for c in FORBIDDEN if c in x}
-                yield Error(path=Path(r) / x, info='file name contains special characters, might be bad for Windows/Android', extra=contained)
+                yield Error(
+                    path=Path(r) / x,
+                    info='file name contains special characters, might be bad for Windows/Android',
+                    extra=contained,
+                )
         ##
 
 
@@ -80,7 +85,7 @@ def fdfind(*args: str | Path) -> bytes:
     return subprocess.check_output([fd_bin, *args])
 
 
-def run(roots: list[Path]) -> None:
+def run(roots: list[Path], *, ignored: Callable[[Error], bool] = IGNORED) -> None:
     errors = []
     for root in roots:
         res = fdfind('--hidden', '.stfolder', root, '--type', 'd', '-0')
@@ -90,7 +95,7 @@ def run(roots: list[Path]) -> None:
         syncthings = [Path(s).parent for s in split]
         for ss in syncthings:
             for err in check(ss):
-                if IGNORED(err):
+                if ignored(err):
                     continue
                 print("ERROR: ", err)
                 errors.append(err)
@@ -107,4 +112,3 @@ def main() -> None:
 
 if __name__ == '__main__':
     main()
-
